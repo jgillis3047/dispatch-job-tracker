@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dispatch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/vendor/leaflet.css">
+<link rel="stylesheet" href="/static/app.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2316213A'/%3E%3Crect x='6' y='8' width='20' height='7' rx='1.5' fill='%23F5B841'/%3E%3Crect x='6' y='17' width='20' height='7' rx='1.5' fill='%23F5B841' opacity='.55'/%3E%3C/svg%3E">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true"><i></i><i></i></span>
+    <span class="brand-name">Dispatch</span>
+  </div>
+  <nav class="views" role="tablist" aria-label="Sections">
+    <button role="tab" data-go="jobs" aria-selected="true">Jobs</button>
+    <button role="tab" data-go="apps" aria-selected="false">Applications</button>
+    <button role="tab" data-go="insights" aria-selected="false">Insights</button>
+    <button role="tab" data-go="radar" aria-selected="false">Radar<span class="badge" id="radarBadge" hidden></span></button>
+  </nav>
+  <div class="sync-pill" id="syncPill" role="status" aria-live="polite"><span class="dot"></span><span id="syncText">Not connected</span></div>
+  <nav class="top-actions">
+    <button class="btn btn-amber" id="btnSync"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3M18 3v4h-4M6 21v-4h4"/></svg><span>Sync email</span></button>
+    <button class="btn" id="btnFind"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg><span>Find roles</span></button>
+    <button class="btn btn-icon" id="btnExport" title="Export to CSV" aria-label="Export to CSV"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 19h14"/></svg></button>
+    <button class="btn btn-icon" id="btnSettings" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg></button>
+  </nav>
+</header>
+
+<main>
+<div class="view" id="view-jobs">
+  <section class="board" aria-label="Latest arrivals">
+    <div class="board-head">
+      <h1>Arrivals</h1>
+      <p class="board-sub" id="boardSub">Newest postings from your job alerts</p>
+    </div>
+    <div class="board-table" role="table" aria-label="Newest postings">
+      <div class="brow bhead" role="row">
+        <span role="columnheader">Posted</span><span role="columnheader">Role</span><span role="columnheader">Company</span>
+        <span role="columnheader" class="c-loc">Location</span><span role="columnheader" class="c-pay">Pay</span><span role="columnheader" class="c-match">Match</span>
+      </div>
+      <div id="boardRows"></div>
+    </div>
+  </section>
+
+  <section class="stats" id="stats" aria-label="Summary"></section>
+
+  <div class="workspace">
+    <aside class="rail" aria-label="Filters">
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>
+        <input id="q" type="search" placeholder="Search title, company, skill" aria-label="Search jobs">
+      </div>
+      <div class="rail-group">
+        <h3>Pipeline</h3>
+        <div class="tabs" id="statusTabs" role="tablist"></div>
+      </div>
+      <div class="rail-group">
+        <h3>Work style</h3>
+        <div class="chips" id="styleChips"></div>
+      </div>
+      <div class="rail-group">
+        <h3>Minimum pay <output id="payOut">Any</output></h3>
+        <input type="range" id="minPay" min="0" max="200" step="5" value="0" aria-label="Minimum annual pay in thousands">
+      </div>
+      <div class="rail-group">
+        <h3>Application</h3>
+        <label class="switch"><input type="checkbox" id="fNoCL"><span></span>No cover letter needed</label>
+        <label class="switch"><input type="checkbox" id="fNoRef"><span></span>No references needed</label>
+        <label class="switch"><input type="checkbox" id="fHasPay"><span></span>Pay is listed</label>
+      </div>
+      <div class="rail-group">
+        <h3>Source</h3>
+        <div class="chips" id="sourceChips"></div>
+      </div>
+      <div class="rail-group resume-card" id="resumeCard"></div>
+    </aside>
+
+    <section class="list-area" aria-label="Jobs">
+      <div class="list-head">
+        <h2 id="listTitle">New</h2>
+        <span class="count" id="listCount"></span>
+        <div class="sort">
+          <label for="sort">Sort</label>
+          <select id="sort">
+            <option value="posted">Newest posted</option>
+            <option value="match">Best match</option>
+            <option value="pay">Highest pay</option>
+            <option value="company">Company A–Z</option>
+          </select>
+        </div>
+      </div>
+      <div id="webBar" class="web-bar" hidden></div>
+      <div id="list" class="list"></div>
+    </section>
+  </div>
+</div>
+
+<div class="view" id="view-apps" hidden>
+  <section class="board board-slim" aria-label="Application totals"><div class="board-head"><h1>Applications</h1><p class="board-sub" id="appsSub"></p></div><div id="appsFlaps" class="flap-strip"></div></section>
+  <div class="apps-tools">
+    <div class="search-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg><input id="aq" type="search" placeholder="Search role, company, city" aria-label="Search applications"></div>
+    <div class="chips" id="appStatusChips"></div>
+    <select id="appFocus" aria-label="Focus area"><option value="">All focus areas</option></select>
+    <select id="appState" aria-label="State"><option value="">All states</option></select>
+    <button class="btn btn-sm" id="btnAppsXlsx">Download as spreadsheet</button>
+  </div>
+  <div id="historyBar" class="history-bar" hidden></div>
+  <div class="table-wrap"><table class="apps" id="appsTable">
+    <thead><tr><th data-k="status_label">Status</th><th data-k="title">Role</th><th data-k="company">Company</th><th data-k="city">Location</th><th data-k="focus">Focus</th>
+      <th data-k="posted_on">Opened</th><th data-k="applied_on" aria-sort="descending">Applied</th><th data-k="closed_on">Closed</th><th data-k="days_to_reply">Reply</th><th data-k="last">Last update</th></tr></thead>
+    <tbody></tbody></table></div>
+  <p class="hint" id="appsFoot"></p>
+</div>
+
+<div class="view" id="view-insights" hidden>
+  <section class="board board-slim" aria-label="Progress"><div class="board-head"><h1>Progress</h1><p class="board-sub" id="insSub"></p></div><div id="insFlaps" class="flap-strip"></div></section>
+  <div class="ins-grid">
+    <figure class="card span2"><figcaption><h3>Applications per week</h3><p>Bar color shows where each application stands today.</p></figcaption><div class="chart-box tall"><canvas id="chWeeks"></canvas></div></figure>
+    <figure class="card"><figcaption><h3>Where you stand</h3><p>Share of all applications by current status.</p></figcaption><div id="statusBar"></div></figure>
+    <figure class="card span2 map-card"><figcaption><h3>Cities you've applied to</h3><p>Circle size is number of applications. Click a city for the breakdown.</p></figcaption><div id="map" class="map"></div></figure>
+    <figure class="card"><figcaption><h3>Top cities</h3><p>Applications by city and outcome.</p></figcaption><div class="chart-box tall"><canvas id="chCities"></canvas></div></figure>
+    <figure class="card"><figcaption><h3>Area of focus</h3><p>What kinds of roles you're going after, and how they're landing.</p></figcaption><div class="chart-box tall"><canvas id="chFocus"></canvas></div></figure>
+    <figure class="card"><figcaption><h3>Opened vs. closed</h3><p>Applications sent each week compared with ones closed out by an employer reply.</p></figcaption><div class="chart-box"><canvas id="chOpenClosed"></canvas></div></figure>
+    <figure class="card"><figcaption><h3>How long until you hear back</h3><p>Days from applying to the first reply that wasn't an auto-confirmation.</p></figcaption><div class="chart-box"><canvas id="chReply"></canvas></div></figure>
+    <figure class="card span2"><figcaption><h3>Activity</h3><p>Applications sent per day.</p></figcaption><div id="calendar" class="calendar"></div></figure>
+    <figure class="card"><figcaption><h3>Employer type</h3><p>Universities, schools, credit unions, government and private companies, by outcome.</p></figcaption><div class="chart-box tall"><canvas id="chEmployer"></canvas></div></figure>
+    <figure class="card"><figcaption><h3>Where you applied</h3><p>The site each application went through.</p></figcaption><div class="chart-box tall"><canvas id="chPlatforms"></canvas></div></figure>
+  </div>
+</div>
+
+<div class="view" id="view-radar" hidden>
+  <section class="board board-slim"><div class="board-head"><h1>Radar</h1><p class="board-sub" id="radarSub">Dispatch's own search for roles that fit you</p>
+    <div class="radar-actions"><button class="btn btn-amber" id="btnRadarRun"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12 18 6"/></svg><span>Run Radar now</span></button>
+    <button class="btn" id="btnAlertTest">Send me a test alert</button></div></div>
+    <div id="radarStatus" class="radar-status"></div></section>
+  <div class="radar-grid">
+    <form class="card radar-form" id="radarForm">
+      <h3>What to look for</h3>
+      <p class="hint" id="rLearned"></p>
+      <label class="field"><span>Roles (one per line)</span><textarea id="rQueries" rows="7"></textarea></label>
+      <label class="field"><span>Areas (one per line; each covers about 50 miles)</span><textarea id="rLocs" rows="5"></textarea></label>
+      <div class="row2">
+        <label class="field"><span>Never show jobs in these states</span><input id="rExclStates" placeholder="CA"></label>
+        <label class="field"><span>Search every (hours)</span><input id="rEvery" type="number" min="1" max="72"></label>
+      </div>
+      <label class="switch"><input type="checkbox" id="rRemote"><span></span>Include remote roles</label>
+      <div class="row2">
+        <label class="field"><span>Minimum resume match %</span><input id="rMatch" type="number" min="0" max="100"></label>
+        <label class="field"><span>Minimum pay ($K, 0 = any)</span><input id="rPay" type="number" min="0" max="500"></label>
+      </div>
+      <label class="field"><span>Only postings newer than (days)</span><input id="rAge" type="number" min="1" max="60"></label>
+      <label class="field"><span>Never show titles containing</span><textarea id="rExclude" rows="3"></textarea></label>
+      <h3>Where Radar searches</h3>
+      <div id="rSources" class="src-list"></div>
+      <h3>Employer types</h3>
+      <p class="hint" style="margin-top:0">Favored types rank higher in your finds and alerts.</p>
+      <div class="chips" id="rFavor"></div>
+      <label class="switch" style="margin-top:8px"><input type="checkbox" id="rOnly"><span></span>Only show favored employer types</label>
+      <h3>Email alerts from job sites</h3>
+      <p class="hint" style="margin-top:0">Dispatch reads alert emails from any of these sites, but each site only sends them once you sign up. Open a link (each one is your target roles and city, already filled in), sign in, and follow the step shown.</p>
+      <div id="rAlertSites" class="alert-sites"></div>
+      <h3>Indeed</h3>
+      <p class="hint" style="margin-top:0">Indeed blocks automated searches, so Dispatch reads Indeed's email alerts instead. Open each link, sign in, and click <b>Get new jobs by email</b>; new Indeed jobs then flow into Dispatch with your other alerts.</p>
+      <div class="links" id="rIndeed"></div>
+      <h3>Company career sites to watch</h3>
+      <label class="switch"><input type="checkbox" id="rAuto"><span></span>Watch every company I've applied to (Workday, Greenhouse, Lever, Ashby, SmartRecruiters)</label>
+      <label class="field"><span>Extra career pages, one URL per line</span><textarea id="rWatch" rows="3" placeholder="https://jobs.lever.co/company&#10;https://company.wd5.myworkdayjobs.com/Careers"></textarea></label>
+      <div id="rSites" class="sites"></div>
+      <h3>How Radar alerts you</h3>
+      <label class="switch"><input type="checkbox" id="rOn"><span></span>Radar is on</label>
+      <label class="switch"><input type="checkbox" id="rEmail"><span></span>Email me a digest (reaches your phone too)</label>
+      <label class="field"><span>Send alerts to</span><input id="rTo" type="email" placeholder="Defaults to your first email account"></label>
+      <label class="switch"><input type="checkbox" id="rDesk"><span></span>Show Windows notifications</label>
+      <div class="dlg-foot"><button class="btn" type="button" id="rReset">Use suggested</button><button class="btn btn-amber" type="submit">Save Radar settings</button></div>
+    </form>
+    <section>
+      <div class="list-head"><h2>Radar finds</h2><span class="count" id="radarCount"></span>
+        <div class="sort"><label for="rSort">Sort</label><select id="rSort"><option value="fit">Best fit</option><option value="posted">Newest posted</option><option value="pay">Highest pay</option></select></div></div>
+      <div class="chips" id="radarTypes" style="margin-bottom:10px"></div>
+      <div id="radarList" class="list"></div>
+    </section>
+  </div>
+</div>
+</main>
+
+<!-- detail drawer -->
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" aria-hidden="true" aria-label="Job details" tabindex="-1"></aside>
+
+<!-- find roles -->
+<dialog id="findDlg" class="dlg">
+  <form method="dialog" class="dlg-inner" id="findForm">
+    <div class="dlg-head"><h2>Find roles on the web</h2><button class="btn btn-icon" value="cancel" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <p class="hint">Searches Remotive, RemoteOK and The Muse. Add free keys in Settings to include Adzuna, USAJOBS and Jooble.</p>
+    <label class="field"><span>Role</span><input id="findQ" required placeholder="Data analyst"></label>
+    <label class="field"><span>Location</span><input id="findL" placeholder="Las Vegas, NV — leave blank for anywhere"></label>
+    <div class="quick" id="quickRoles"></div>
+    <div class="dlg-foot"><button class="btn" value="cancel">Cancel</button><button class="btn btn-amber" id="findGo" value="go">Search boards</button></div>
+  </form>
+</dialog>
+
+<!-- connect gmail (first run) -->
+<dialog id="connectDlg" class="dlg">
+  <form method="dialog" class="dlg-inner" id="connectForm">
+    <div class="dlg-head"><h2>Connect your Gmail</h2><button class="btn btn-icon" value="cancel" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <p class="hint">Dispatch reads <b id="cEmailShow">jordangillis74@gmail.com</b> for job alerts and employer replies. Google asks you to approve this once. After that, everything runs on its own.</p>
+    <ol class="connect-steps">
+      <li><div><b>Open Google's approval page</b><p>Sign in as <span id="cEmailShow2">jordangillis74@gmail.com</span>. If Google asks you to turn on 2-Step Verification first, do that; it takes a minute.</p>
+        <a class="btn btn-amber" id="cOpen" href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">Open Google approval page</a>
+        <p class="hint" style="margin:10px 0 0">Google says <i>“The setting you are looking for is not available for your account”</i>? Turn on 2-Step Verification first, then click the button above again.</p>
+        <a class="btn btn-sm" href="https://myaccount.google.com/signinoptions/twosv" target="_blank" rel="noopener" style="margin-top:6px">Turn on 2-Step Verification</a></div></li>
+      <li><div><b>Type “Dispatch” as the app name and click Create</b><p>Google shows a 16-letter code.</p></div></li>
+      <li><div><b>Paste the code here</b>
+        <input id="cCode" class="code-input" placeholder="abcd efgh ijkl mnop" autocomplete="off" spellcheck="false" aria-label="16-letter code from Google"></div></li>
+    </ol>
+    <details class="howto"><summary>Use a different Gmail address</summary><label class="field" style="margin-top:10px"><span>Email address</span><input id="cEmail" type="email" value="jordangillis74@gmail.com"></label></details>
+    <p id="cMsg" role="status" class="connect-msg"></p>
+    <div class="dlg-foot"><button class="btn" value="cancel">Later</button><button class="btn btn-amber" value="go" id="cGo">Connect and start reading</button></div>
+  </form>
+</dialog>
+
+<!-- settings -->
+<dialog id="setDlg" class="dlg dlg-wide">
+  <form method="dialog" class="dlg-inner" id="setForm">
+    <div class="dlg-head"><h2>Settings</h2><button class="btn btn-icon" value="cancel" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <div class="set-grid">
+      <section>
+        <h3>Email accounts</h3>
+        <p class="hint">Add every inbox that gets job alerts or replies from employers. Each needs its own app password.</p>
+        <div id="accounts"></div>
+        <button type="button" class="btn btn-sm" id="btnAddAcct">Add another account</button>
+        <details class="howto">
+          <summary>How to get a Gmail app password</summary>
+          <ol>
+            <li>Turn on 2-Step Verification at <a href="https://myaccount.google.com/security" target="_blank" rel="noopener">myaccount.google.com/security</a>.</li>
+            <li>Open <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">myaccount.google.com/apppasswords</a>, name it “Dispatch”, and copy the 16-character code.</li>
+            <li>In Gmail, Settings → See all settings → Forwarding and POP/IMAP → enable IMAP.</li>
+          </ol>
+          <p>Passwords stay on this computer in <code>data/settings.json</code>. Dispatch reads mail without marking it read, and only sends alerts to you.</p>
+        </details>
+        <div class="row2">
+          <label class="field"><span>Job alerts: look back (days)</span><input id="sDays" type="number" min="1" max="120"></label>
+          <label class="field"><span>Employer replies: look back (days)</span><input id="sStatusDays" type="number" min="7" max="365"></label>
+        </div>
+        <div class="row2">
+          <label class="field"><span>Check email every (minutes, 0 = off)</span><input id="sAuto" type="number" min="0" max="1440"></label>
+          <label class="field"><span>Other alert senders</span><input id="sSenders" placeholder="talent.com, careers@x.com"></label>
+        </div>
+        <h3>Opening Dispatch</h3>
+        <label class="switch" id="startupRow"><input type="checkbox" id="sStartup"><span></span>Start with Windows, so Radar and email checks run all day</label>
+        <div class="test-row"><button type="button" class="btn btn-sm btn-ghost" id="btnQuit">Quit Dispatch</button><span class="hint" style="margin:0">Stops background checks until you open it again.</span></div>
+      </section>
+      <section>
+        <h3>Search &amp; matching</h3>
+        <label class="field"><span>Default location for similar-role searches</span><input id="sLoc"></label>
+        <label class="field"><span>Resume PDF (blank = newest PDF in the Employment folder)</span><input id="sResume" placeholder="C:\Users\you\...\Resume.pdf"></label>
+        <div id="sResumeInfo" class="resume-info"></div>
+        <h3>Automation</h3>
+        <div class="row2">
+          <label class="field"><span>Remind me to follow up after (days)</span><input id="sFollow" type="number" min="0" max="60"></label>
+          <label class="field"><span>Mark “No response” after (days)</span><input id="sGhost" type="number" min="0" max="180"></label>
+        </div>
+        <label class="switch"><input type="checkbox" id="sAutoApplied"><span></span>File alert jobs I've already applied to under Applied</label>
+        <label class="switch"><input type="checkbox" id="sWeekly"><span></span>Email me a progress report every Sunday evening</label>
+        <div class="test-row" style="margin:6px 0 4px"><button type="button" class="btn btn-sm" id="btnReportNow">Send this week's report now</button><span id="reportMsg" class="hint" style="margin:0"></span></div>
+        <h3>Old spreadsheet history</h3>
+        <div id="sHistory" class="resume-info"></div>
+        <h3>Optional job-board keys</h3>
+        <p class="hint">All free. Each adds another board to “Find roles” and “Similar roles”.</p>
+        <div class="row2">
+          <label class="field"><span><a href="https://developer.adzuna.com/signup" target="_blank" rel="noopener">Adzuna</a> app ID</span><input id="sAdzId"></label>
+          <label class="field"><span>Adzuna app key</span><input id="sAdzKey" type="password"></label>
+        </div>
+        <div class="row2">
+          <label class="field"><span><a href="https://developer.usajobs.gov/apirequest/" target="_blank" rel="noopener">USAJOBS</a> key</span><input id="sUsaKey" type="password"></label>
+          <label class="field"><span>USAJOBS email</span><input id="sUsaEmail" type="email"></label>
+        </div>
+        <label class="field"><span><a href="https://jooble.org/api/about" target="_blank" rel="noopener">Jooble</a> key</span><input id="sJooble" type="password"></label>
+        <h3>Sample data</h3>
+        <div class="test-row"><button type="button" class="btn" id="btnDemo">Load sample alerts</button><button type="button" class="btn btn-ghost" id="btnDemoClear">Remove samples</button></div>
+      </section>
+    </div>
+    <div class="dlg-foot"><button class="btn" value="cancel">Cancel</button><button class="btn btn-amber" value="save" id="btnSave">Save settings</button></div>
+  </form>
+</dialog>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<script src="/static/vendor/chart.umd.min.js"></script>
+<script src="/static/vendor/leaflet.js"></script>
+<script src="/static/app.js"></script>
+<script src="/static/views.js"></script>
+</body>
+</html>
