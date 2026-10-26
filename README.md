@@ -7,6 +7,14 @@ Your job-search command center. It runs free on your own computer and has four s
 - **Insights**: charts of your progress. Applications per week, where you stand, a map of the cities you've applied to, top cities, area of focus, opened vs. closed, how long until you hear back, a daily activity calendar, and where you applied.
 - **Radar**: Dispatch's own job hunt. Every few hours it searches job boards and the career sites of companies you've applied to, then sends you an email digest (it reaches your phone too) and a Windows notification about new roles that fit you.
 
+## Screenshots
+
+**Jobs:** newest postings from email alerts, with pay, pipeline counts and resume-skill gaps
+![Jobs board](screenshots/jobs.png)
+
+**Radar:** Dispatch's own job search, scored against my resume and filtered by role, location and pay
+![Radar](screenshots/radar.png)
+
 ## Opening it
 
 1. **First time:** double-click **Start Dispatch.bat** in this folder. It sets itself up in about a minute (it needs Python 3; if that's missing, the window tells you where to get it free). It also adds a **Dispatch** icon to your desktop and Start menu.
